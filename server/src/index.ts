@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
+import cookieParser from "cookie-parser";
+import cors from "cors";
 import { createConnection, getConnectionOptions } from "typeorm";
 import { ApolloServer } from "apollo-server-express";
 import { GraphQLSchema } from "graphql";
@@ -29,6 +31,13 @@ const startServer = async () => {
   });
 
   const app = express();
+  app.use(
+    cors({
+      credentials: true,
+      origin: process.env.CLIENT_DOMAIN
+    })
+  );
+  app.use(cookieParser());
   server.applyMiddleware({ app });
 
   app.listen(PORT, () =>

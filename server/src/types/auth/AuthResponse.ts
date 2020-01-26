@@ -4,7 +4,7 @@ import { FieldError } from "../error";
 
 @ObjectType()
 export default class SuccessResponse {
-  @Field()
+  @Field({ nullable: true })
   success?: boolean;
 
   @Field(() => [FieldError], { nullable: true })

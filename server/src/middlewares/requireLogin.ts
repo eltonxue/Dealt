@@ -4,66 +4,73 @@ import { verify } from "jsonwebtoken";
 import { ApolloError } from "apollo-server-core";
 
 import { User } from "../entities";
-import { createTokens } from "../helpers/jwt";
+import { createAccessToken } from "../helpers/jwt";
 
 import { Context } from "../types/express";
 
 // TODO: Implement middleware for handling accessTokens and refreshTokens
 // See: https://www.youtube.com/watch?v=zbp8LZXBUYc
 
+// Authenticates access token and refresh token passed as cookies
 export const requireLogin: MiddlewareFn<Context> = async (
-  { context },
+  { context: { req, res } },
   next: NextFunction
 ) => {
-  console.log("running jwt middlware");
-  const accessToken = context.req.headers["x-access-token"] as string;
-  const refreshToken = context.req.headers["x-refresh-token"] as string;
+  console.log("running 'requireLogin' middleware...");
+  const { accessToken, refreshToken } = req.cookies;
 
-  console.log(accessToken);
-  console.log(refreshToken);
-
-  // If neither tokens exist, we want to skip this middleware
-  if (!accessToken && !refreshToken) {
+  // If neither tokens exist, we want throw an unauthorized error
+  if (!accessToken || !refreshToken) {
     throw new ApolloError("Unauthorized");
-  }
-
-  // If accessToken decoded accessToken, we want to attach the user to the request object
+  } //TODO
 
   const decodedAccessToken: User = (await verify(
     accessToken,
-    "accessToken"
+    process.env.ACCESS_TOKEN_SECRET as string
   )) as User;
 
+  // Access token is valid, continue with request
   if (decodedAccessToken) {
-    context.req.user = decodedAccessToken;
+    // MAYBE: We might need to fetch the user from the database for attaching
+    req.user = decodedAccessToken;
     return next();
   }
 
   const decodedRefreshToken: User = (await verify(
     refreshToken,
-    "refreshToken"
+    process.env.REFRESH_TOKEN_SECRET as string
   )) as User;
 
+  // Refresh token is valid, continue with authentication
   if (decodedRefreshToken) {
     const user = await User.findOne({ id: decodedRefreshToken.id });
 
     if (!user) {
-      return next();
+      throw new ApolloError("User not found");
     }
 
-    context.req.user = decodedRefreshToken;
+    /**
+     * Refresh token has not been invalidated in the database.
+     * Therefore, we generate a new access token and continue with the request
+     */
+    if (decodedRefreshToken.count === user.count) {
+      const newAccessToken = await createAccessToken(user);
 
-    // Create new tokens
-    const userTokens = await createTokens(user);
-    context.res.set({
-      "Access-Control-Expose-Headers": "x-access-token,x-refresh-token",
-      "x-access-token": userTokens.accessToken,
-      "x-refresh-token": userTokens.refreshToken
-    });
-    return next();
+      // Setting new access token as cookie
+      res.cookie("accessToken", newAccessToken);
+
+      const decodedNewAccessToken: User = (await verify(
+        newAccessToken,
+        process.env.ACCESS_TOKEN_SECRET as string
+      )) as User;
+
+      req.user = decodedNewAccessToken;
+      return next();
+    }
   }
-
-  console.log("no tokens passed");
-
-  return next();
+  /**
+   * If we've reached this point, the access token and refresh token were invalidated.
+   * Therefore, we should throw an unauthorized error.
+   */
+  throw new ApolloError("Unauthorized");
 };
