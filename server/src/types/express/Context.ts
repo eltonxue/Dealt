@@ -1,12 +1,14 @@
 import { Request, Response } from "express";
+import { MailService } from "@sendgrid/mail";
+
 import { User } from "../../entities";
 
-interface RequestWithUser extends Request {
+interface ModifiedRequest extends Request {
   user: User;
 }
 
 interface Context {
-  req: RequestWithUser;
+  req: ModifiedRequest;
   res: Response;
 }
 

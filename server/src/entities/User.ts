@@ -21,4 +21,8 @@ export class User extends BaseEntity {
   @Field()
   @Column("integer", { default: 0 })
   count!: number;
+
+  @Field()
+  @Column("text", { nullable: true })
+  resetToken!: string;
 }

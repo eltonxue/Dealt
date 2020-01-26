@@ -22,7 +22,7 @@ export const requireLogin: MiddlewareFn<Context> = async (
   // If neither tokens exist, we want throw an unauthorized error
   if (!accessToken || !refreshToken) {
     throw new ApolloError("Unauthorized");
-  } //TODO
+  }
 
   const decodedAccessToken: User = (await verify(
     accessToken,

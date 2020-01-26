@@ -6,11 +6,13 @@ dotenv.config();
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import sgMail from "@sendgrid/mail";
 import { createConnection, getConnectionOptions } from "typeorm";
 import { ApolloServer } from "apollo-server-express";
 import { GraphQLSchema } from "graphql";
 import { buildSchema } from "type-graphql";
 
+import { Context } from "./types/express";
 import resolvers from "./resolvers";
 
 const PORT: String | Number = process.env.PORT || 4000;
@@ -27,7 +29,10 @@ const startServer = async () => {
 
   const server: ApolloServer = new ApolloServer({
     schema,
-    context: ({ req, res }) => ({ req, res })
+    context: async ({ req, res }: Context) => {
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY as string);
+      return { req, res };
+    }
   });
 
   const app = express();
