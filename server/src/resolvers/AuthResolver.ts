@@ -237,7 +237,11 @@ export default class AuthResolver {
 
       const user = await User.findOne({ email });
 
-      if (user && resetToken !== user.resetToken) {
+      if (!user) {
+        return INVALID_RESET_TOKEN_ERROR;
+      }
+
+      if (resetToken !== user.resetToken) {
         return INVALID_RESET_TOKEN_ERROR;
       }
 
@@ -249,7 +253,8 @@ export default class AuthResolver {
           { email },
           {
             password: hashedPassword,
-            resetToken: undefined
+            resetToken: undefined,
+            count: ++user.count
           }
         );
       });
